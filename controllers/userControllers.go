@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -77,22 +78,27 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
 	})
-
-	tokenstring, err := token.SignedString([]byte("SECRET"))
+	key := []byte(os.Getenv("SECRET"))
+	tokenstring, err := token.SignedString(key)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": token,
+			"error": err.Error(),
 		})
 		return
 	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("Authorization", tokenstring, 3600*24*30, "", "", false, true)
+	c.JSON(http.StatusOK, gin.H{})
 
+}
+func Validate(c *gin.Context) {
+	user, _ := c.Get("user")
 	c.JSON(http.StatusOK, gin.H{
-		"token": tokenstring,
+		"message": user,
 	})
-
 }
